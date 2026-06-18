@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import random
 from dataclasses import dataclass
@@ -12,36 +12,26 @@ def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
 
 @dataclass
 class SimulatedResearchEnvironment:
-    """A controllable research-like environment for iterative decisions."""
+    """Controllable research-like environment for iterative decision experiments."""
 
     seed: int = 7
-    base_cost: int = 350
+    base_cost_tokens: int = 320
 
     def __post_init__(self) -> None:
         self.rng = random.Random(self.seed)
 
-    def propose_candidates(self, task: Task, num_candidates: int) -> list[Candidate]:
-        pool = list(task.candidate_pool)
-        if not pool:
+    def get_candidate_pool(self, task: Task, round_idx: int) -> list[Candidate]:
+        if not task.candidate_pool:
             raise ValueError(f"Task {task.task_id} has empty candidate pool.")
 
-        if num_candidates == 1:
-            # Single-path baseline: always pick the currently highest base-score direction.
-            picked = [max(pool, key=lambda x: float(x.get("base_score", 0.0)))]
-        elif num_candidates >= len(pool):
-            picked = list(pool)
-            self.rng.shuffle(picked)
-        else:
-            picked = self.rng.sample(pool, k=num_candidates)
-
         candidates: list[Candidate] = []
-        for idx, item in enumerate(picked):
+        for idx, item in enumerate(task.candidate_pool):
             base = float(item.get("base_score", 0.5))
-            noisy_base = _clamp(base + self.rng.uniform(-0.04, 0.04))
+            noisy_base = _clamp(base + self.rng.uniform(-0.05, 0.05))
             cid = str(item.get("id", f"cand_{idx}"))
             candidates.append(
                 Candidate(
-                    candidate_id=f"{cid}_r{idx}",
+                    candidate_id=f"{cid}_r{round_idx}_{idx}",
                     description=str(item.get("description", cid)),
                     tags=list(item.get("tags", [])),
                     base_score=noisy_base,
@@ -53,11 +43,11 @@ class SimulatedResearchEnvironment:
             )
         return candidates
 
-    def step(self, task: Task, candidate: Candidate) -> Outcome:
+    def execute(self, task: Task, candidate: Candidate) -> Outcome:
         hidden_quality = float(candidate.metadata.get("hidden_quality", 0.5))
 
-        # Non-linear success curve creates "promising" and "dead-end" directions.
-        success_prob = _clamp(0.02 + 0.95 * (hidden_quality**2))
+        # Non-linear map: high-quality candidates become much more likely to succeed.
+        success_prob = _clamp(0.02 + 0.94 * (hidden_quality**2))
         success = self.rng.random() < success_prob
 
         quality = _clamp(hidden_quality + self.rng.uniform(-0.1, 0.1))
@@ -68,30 +58,34 @@ class SimulatedResearchEnvironment:
             quality = min(quality, 0.58)
             failure_modes = list(candidate.metadata.get("failure_modes", ["execution_failed"]))
 
-        token_cost = self.base_cost + self.rng.randint(80, 260) + 20 * len(candidate.tags)
+        token_cost = self.base_cost_tokens + self.rng.randint(80, 220) + 20 * len(candidate.tags)
 
         return Outcome(
             success=success,
             quality_score=quality,
+            score=quality,
             failure_modes=failure_modes,
             cost_tokens=token_cost,
+            cost_steps=1,
             notes=f"Task={task.task_id}; candidate={candidate.description}",
         )
 
 
 def build_demo_tasks() -> list[Task]:
     return [
-        # Task 1: Reasoning — base scores mislead (single_pass has high base but low quality)
         Task(
-            task_id="task_reasoning",
-            description="Find a robust solution route for a hard reasoning subproblem.",
+            task_id="task_reasoning_1",
+            description="Find a robust strategy for a difficult reasoning subproblem.",
+            candidate_generation_rule="fixed_pool",
+            budget_max_rounds=6,
+            budget_max_tokens=8000,
             candidate_pool=[
                 {
                     "id": "single_pass",
                     "description": "single-pass prompting",
                     "tags": ["single_pass", "prompt_only"],
                     "base_score": 0.74,
-                    "hidden_quality": 0.24,
+                    "hidden_quality": 0.25,
                     "failure_modes": ["fragile_reasoning", "hallucination"],
                 },
                 {
@@ -120,81 +114,85 @@ def build_demo_tasks() -> list[Task]:
                 },
             ],
         ),
-        # Task 2: NLP Generation — retrieval augmentation is underestimated
         Task(
-            task_id="task_nlp_generation",
-            description="Improve output quality for an open-ended NLP generation task.",
+            task_id="task_planning_1",
+            description="Choose the most reliable planning route under uncertain constraints.",
+            candidate_generation_rule="fixed_pool",
+            budget_max_rounds=6,
+            budget_max_tokens=8000,
             candidate_pool=[
                 {
-                    "id": "prompt_only",
-                    "description": "direct prompting without context",
-                    "tags": ["single_pass", "prompt_only"],
-                    "base_score": 0.70,
-                    "hidden_quality": 0.22,
-                    "failure_modes": ["hallucination", "generic_output"],
-                },
-                {
-                    "id": "rag",
-                    "description": "retrieval-augmented generation",
-                    "tags": ["search", "retrieval", "multi_step"],
-                    "base_score": 0.58,
-                    "hidden_quality": 0.82,
-                    "failure_modes": ["retrieval_noise"],
-                },
-                {
-                    "id": "chain_of_thought",
-                    "description": "chain-of-thought prompting",
-                    "tags": ["multi_step", "prompt_only"],
-                    "base_score": 0.64,
-                    "hidden_quality": 0.60,
-                    "failure_modes": ["reasoning_drift"],
-                },
-                {
-                    "id": "constrained_decode",
-                    "description": "structured output with constraints",
-                    "tags": ["verification", "structured"],
-                    "base_score": 0.52,
-                    "hidden_quality": 0.72,
+                    "id": "fast_plan",
+                    "description": "fast heuristic planning",
+                    "tags": ["single_pass", "heuristic"],
+                    "base_score": 0.71,
+                    "hidden_quality": 0.28,
                     "failure_modes": ["constraint_violation"],
+                },
+                {
+                    "id": "verify_plan",
+                    "description": "plan + intermediate verification",
+                    "tags": ["verification", "multi_step"],
+                    "base_score": 0.62,
+                    "hidden_quality": 0.84,
+                    "failure_modes": ["partial_verification"],
+                },
+                {
+                    "id": "retrieve_plan",
+                    "description": "retrieval-augmented planning",
+                    "tags": ["search", "retrieval"],
+                    "base_score": 0.58,
+                    "hidden_quality": 0.72,
+                    "failure_modes": ["stale_evidence"],
+                },
+                {
+                    "id": "tree_plan",
+                    "description": "tree-of-thought planning",
+                    "tags": ["tree_search", "multi_step"],
+                    "base_score": 0.55,
+                    "hidden_quality": 0.7,
+                    "failure_modes": ["branch_explosion"],
                 },
             ],
         ),
-        # Task 3: Data Analysis — structured approaches dominate
         Task(
-            task_id="task_data_analysis",
-            description="Select an analysis strategy for a noisy tabular dataset.",
+            task_id="task_verification_1",
+            description="Find a verification-heavy route that maximizes robustness.",
+            candidate_generation_rule="fixed_pool",
+            budget_max_rounds=6,
+            budget_max_tokens=8000,
             candidate_pool=[
                 {
-                    "id": "heuristic_filter",
-                    "description": "heuristic-based data filtering",
-                    "tags": ["single_pass", "heuristic"],
-                    "base_score": 0.72,
-                    "hidden_quality": 0.30,
-                    "failure_modes": ["overfitting_heuristic", "data_loss"],
+                    "id": "direct_answer",
+                    "description": "direct answer then self-check",
+                    "tags": ["single_pass", "self_check"],
+                    "base_score": 0.73,
+                    "hidden_quality": 0.27,
+                    "failure_modes": ["self_check_overfit"],
                 },
                 {
-                    "id": "statistical_pipeline",
-                    "description": "statistical cleaning + feature engineering",
-                    "tags": ["multi_step", "verification", "structured"],
-                    "base_score": 0.55,
-                    "hidden_quality": 0.88,
-                    "failure_modes": ["distribution_shift"],
+                    "id": "multi_verify",
+                    "description": "multi-step solve + verification",
+                    "tags": ["multi_step", "verification"],
+                    "base_score": 0.61,
+                    "hidden_quality": 0.85,
+                    "failure_modes": ["verification_gap"],
                 },
                 {
-                    "id": "iterative_imputation",
-                    "description": "iterative missing-value imputation",
-                    "tags": ["multi_step", "structured"],
-                    "base_score": 0.60,
-                    "hidden_quality": 0.70,
-                    "failure_modes": ["imputation_bias"],
+                    "id": "retrieve_verify",
+                    "description": "retrieve evidence + verification",
+                    "tags": ["retrieval", "verification"],
+                    "base_score": 0.57,
+                    "hidden_quality": 0.76,
+                    "failure_modes": ["evidence_noise"],
                 },
                 {
-                    "id": "automl_search",
-                    "description": "automated model selection via search",
-                    "tags": ["search", "tree_search", "multi_step"],
-                    "base_score": 0.50,
-                    "hidden_quality": 0.65,
-                    "failure_modes": ["search_timeout"],
+                    "id": "debate_verify",
+                    "description": "multi-agent debate + verification",
+                    "tags": ["debate", "verification"],
+                    "base_score": 0.53,
+                    "hidden_quality": 0.67,
+                    "failure_modes": ["debate_drift"],
                 },
             ],
         ),

@@ -16,6 +16,16 @@ class Selector:
     def __init__(self, cfg: SelectionConfig) -> None:
         self.cfg = cfg
 
+    @staticmethod
+    def rank_by_base(candidates: list[Candidate]) -> list[str]:
+        ranked = sorted(candidates, key=lambda c: c.base_score, reverse=True)
+        return [c.candidate_id for c in ranked]
+
+    @staticmethod
+    def rank_by_final(candidates: list[Candidate]) -> list[str]:
+        ranked = sorted(candidates, key=lambda c: c.final_score, reverse=True)
+        return [c.candidate_id for c in ranked]
+
     def apply_scores(self, candidates: list[Candidate], bias_scores: dict[str, float]) -> list[Candidate]:
         for c in candidates:
             c.bias_score = float(bias_scores.get(c.candidate_id, 0.0))
@@ -28,7 +38,6 @@ class Selector:
 
         if self.cfg.mode == "sample":
             return self._sample(candidates)
-
         return max(candidates, key=lambda c: c.final_score)
 
     def _sample(self, candidates: list[Candidate]) -> Candidate:

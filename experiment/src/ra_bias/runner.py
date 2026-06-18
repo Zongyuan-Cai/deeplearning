@@ -1,15 +1,17 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
 
 from .agent_loop import AgentConfig, ResearchAgentLoop
+from .analysis import build_analysis_artifacts
 from .bias_engine import (
     HardPruningBiasEngine,
-    LLMBiasEngine,
+    HeuristicLLMBiasEngine,
     NoBiasEngine,
-    TagBiasEngine,
-    TextualReflectionEngine,
+    ShuffledBiasEngine,
+    SoftTagBiasEngine,
+    StaticBiasEngine,
     WeakTagBiasEngine,
 )
 from .environment import SimulatedResearchEnvironment, build_demo_tasks
@@ -18,150 +20,147 @@ from .logger import JsonlLogger
 from .models import EpisodeLog, Task
 from .reflection import SimpleReflector
 from .selector import SelectionConfig, Selector
-
-# ─── Method groups ────────────────────────────────────────────────────────────
-
-# Main comparison (RQ1–RQ3, statics.md §1)
-MAIN_METHODS = ["single_path", "branching_only", "textual_reflection", "reflection_as_bias"]
-
-# Ablation 1: Hard Pruning vs Soft Bias (design.md §7.2, statics.md §3.1)
-ABLATION_HARD_VS_SOFT = ["hard_pruning", "reflection_as_bias"]
-
-# Ablation 2: Tag-based vs LLM-based Bias (design.md §7.3, statics.md §3.2)
-ABLATION_BIAS_TYPE = ["reflection_as_bias", "llm_bias"]
-
-# Ablation 3: No / Weak / Full Bias strength (design.md §7.4, statics.md §3.3)
-ABLATION_BIAS_STRENGTH = ["branching_only", "weak_bias", "reflection_as_bias"]
+from .strategies import RandomStrategy, TextualReflectionBranchingStrategy, TopKBranchingStrategy
 
 
-# ─── Agent factory ────────────────────────────────────────────────────────────
+CORE_METHODS = ["random", "greedy", "reflection_only", "dynamic_bias"]
+ABLATION_METHOD_GROUPS = {
+    "ablation_no_reflection": ["dynamic_bias", "greedy"],
+    "ablation_static_bias": ["dynamic_bias", "static_bias"],
+    "ablation_shuffle_bias": ["dynamic_bias", "shuffled_bias"],
+}
+
 
 def build_agent(method: str, seed: int) -> ResearchAgentLoop:
     env = SimulatedResearchEnvironment(seed=seed)
     reflector = SimpleReflector()
     selector = Selector(SelectionConfig(alpha=1.0, mode="greedy"))
 
-    if method == "single_path":
-        cfg = AgentConfig(method_name=method, num_candidates=1,
-                          enable_reflection=False, enable_bias=False)
+    if method in ("random", "single_path"):
+        cfg = AgentConfig(method_name="random", enable_reflection=False, enable_bias=False)
+        strategy = RandomStrategy(top_k=4)
+        selector = Selector(SelectionConfig(alpha=1.0, mode="sample"))
         bias_engine = NoBiasEngine()
 
-    elif method == "branching_only":
-        cfg = AgentConfig(method_name=method, num_candidates=4,
-                          enable_reflection=False, enable_bias=False)
+    elif method in ("greedy", "branching_only"):
+        cfg = AgentConfig(method_name="greedy", enable_reflection=False, enable_bias=False)
+        strategy = TopKBranchingStrategy(top_k=4)
         bias_engine = NoBiasEngine()
 
-    elif method == "textual_reflection":
-        # Reflection exists but only as implicit text context — modelled as a
-        # weak, noisy bias engine (design.md §5.3).  Differentiated from
-        # branching_only: non-zero signal influence, but weaker than TagBiasEngine.
-        cfg = AgentConfig(method_name=method, num_candidates=4,
-                          enable_reflection=True, enable_bias=True)
-        bias_engine = TextualReflectionEngine(seed=seed)
+    elif method in ("reflection_only", "textual_reflection"):
+        cfg = AgentConfig(method_name="reflection_only", enable_reflection=True, enable_bias=False)
+        strategy = TextualReflectionBranchingStrategy(top_k=4)
+        bias_engine = NoBiasEngine()
 
-    elif method == "reflection_as_bias":
-        cfg = AgentConfig(method_name=method, num_candidates=4,
-                          enable_reflection=True, enable_bias=True)
-        bias_engine = TagBiasEngine()
+    elif method in ("dynamic_bias", "reflection_as_bias", "soft_bias"):
+        cfg = AgentConfig(method_name="dynamic_bias", enable_reflection=True, enable_bias=True)
+        strategy = TopKBranchingStrategy(top_k=4)
+        bias_engine = SoftTagBiasEngine()
 
-    elif method == "hard_pruning":
-        # Ablation 1: eliminate avoid-tag candidates outright (design.md §7.2)
-        cfg = AgentConfig(method_name=method, num_candidates=4,
-                          enable_reflection=True, enable_bias=True)
+    elif method in ("hard_pruning",):
+        cfg = AgentConfig(method_name=method, enable_reflection=True, enable_bias=True)
+        strategy = TopKBranchingStrategy(top_k=4)
         bias_engine = HardPruningBiasEngine()
 
-    elif method == "llm_bias":
-        # Ablation 2: LLM-based scoring (design.md §7.3)
-        cfg = AgentConfig(method_name=method, num_candidates=4,
-                          enable_reflection=True, enable_bias=True)
-        bias_engine = LLMBiasEngine(seed=seed)
-
-    elif method == "weak_bias":
-        # Ablation 3: reduced bias weights (design.md §7.4)
-        cfg = AgentConfig(method_name=method, num_candidates=4,
-                          enable_reflection=True, enable_bias=True)
+    elif method in ("weak_bias",):
+        cfg = AgentConfig(method_name=method, enable_reflection=True, enable_bias=True)
+        strategy = TopKBranchingStrategy(top_k=4)
         bias_engine = WeakTagBiasEngine()
+
+    elif method in ("llm_bias",):
+        cfg = AgentConfig(method_name=method, enable_reflection=True, enable_bias=True)
+        strategy = TopKBranchingStrategy(top_k=4)
+        bias_engine = HeuristicLLMBiasEngine()
+
+    elif method in ("static_bias",):
+        cfg = AgentConfig(method_name=method, enable_reflection=True, enable_bias=True)
+        strategy = TopKBranchingStrategy(top_k=4)
+        bias_engine = StaticBiasEngine()
+
+    elif method in ("shuffled_bias",):
+        cfg = AgentConfig(method_name=method, enable_reflection=True, enable_bias=True)
+        strategy = TopKBranchingStrategy(top_k=4)
+        bias_engine = ShuffledBiasEngine(seed=seed)
 
     else:
         raise ValueError(f"Unknown method: {method}")
 
     return ResearchAgentLoop(
-        env=env, reflector=reflector, bias_engine=bias_engine,
-        selector=selector, cfg=cfg,
+        env=env,
+        strategy=strategy,
+        reflector=reflector,
+        bias_engine=bias_engine,
+        selector=selector,
+        cfg=cfg,
     )
 
 
-# ─── Episode replication ──────────────────────────────────────────────────────
-
-def replicate_tasks(num_episodes: int) -> list[Task]:
-    """Replicate all demo tasks across episodes for statistical stability."""
+def expand_tasks(num_episodes: int) -> list[Task]:
     base_tasks = build_demo_tasks()
-    episodes: list[Task] = []
-    for i in range(num_episodes):
-        for t in base_tasks:
-            episodes.append(replace(t, task_id=f"{t.task_id}_ep{i + 1}"))
-    return episodes
+    tasks: list[Task] = []
+
+    for ep_idx in range(num_episodes):
+        t = base_tasks[ep_idx % len(base_tasks)]
+        tasks.append(
+            replace(
+                t,
+                task_id=f"{t.task_id}_ep{ep_idx+1}",
+                initial_state={"episode_index": ep_idx + 1},
+            )
+        )
+    return tasks
 
 
-# ─── Single-method runner ─────────────────────────────────────────────────────
-
-def run_method(method: str, num_episodes: int, seed: int = 7) -> tuple[list[EpisodeLog], Metrics]:
-    tasks = replicate_tasks(num_episodes)
+def run_method(method: str, num_episodes: int, base_seed: int = 7) -> tuple[list[EpisodeLog], Metrics]:
+    tasks = expand_tasks(num_episodes)
     episodes: list[EpisodeLog] = []
 
     for idx, task in enumerate(tasks):
-        agent = build_agent(method=method, seed=seed + idx)
+        # Same per-episode seed schedule across methods for fair comparison.
+        agent = build_agent(method=method, seed=base_seed + idx)
         episodes.append(agent.run(task))
 
-    metrics = compute_metrics(method, episodes)
+    method_name = episodes[0].method_name if episodes else method
+    metrics = compute_metrics(method_name, episodes)
     return episodes, metrics
 
 
-# ─── Multi-method runners ─────────────────────────────────────────────────────
+def run_methods(methods: list[str], num_episodes: int, output_dir: str) -> tuple[list[Metrics], dict[str, str]]:
+    out = Path(output_dir)
+    logger = JsonlLogger(output_dir=out)
 
-def run_methods(
-    methods: list[str],
-    num_episodes: int,
-    output_dir: str,
-) -> list[Metrics]:
-    logger = JsonlLogger(output_dir=Path(output_dir))
     all_metrics: list[Metrics] = []
     all_episodes: list[EpisodeLog] = []
+    episodes_by_method: dict[str, list[EpisodeLog]] = {}
 
     for method in methods:
         episodes, metrics = run_method(method=method, num_episodes=num_episodes)
         for ep in episodes:
             logger.write_episode(ep)
         all_episodes.extend(episodes)
+        episodes_by_method[method] = episodes
         all_metrics.append(metrics)
 
-    logger.write_summary(all_episodes, filename="summary.json")
-    return all_metrics
+    logger.write_summary(all_episodes, filename="all_methods_summary.json")
+    artifacts = build_analysis_artifacts(all_metrics, episodes_by_method, out)
+
+    return all_metrics, artifacts
 
 
-def run_ablations(
+def run_main_and_ablations(
     num_episodes: int,
     output_dir: str,
-) -> dict[str, list[Metrics]]:
-    """
-    Run all three ablation groups and return their metrics.
-    Logs are written to separate subdirectories for clarity.
-    """
-    base = Path(output_dir)
-    results: dict[str, list[Metrics]] = {}
+    run_ablation: bool = True,
+) -> dict[str, tuple[list[Metrics], dict[str, str]]]:
+    out = Path(output_dir)
+    results: dict[str, tuple[list[Metrics], dict[str, str]]] = {}
 
-    ablation_groups = {
-        "hard_vs_soft": ABLATION_HARD_VS_SOFT,
-        "bias_type": ABLATION_BIAS_TYPE,
-        "bias_strength": ABLATION_BIAS_STRENGTH,
-    }
+    main_dir = out / "main"
+    results["main"] = run_methods(methods=CORE_METHODS, num_episodes=num_episodes, output_dir=str(main_dir))
 
-    for name, methods in ablation_groups.items():
-        metrics = run_methods(
-            methods=methods,
-            num_episodes=num_episodes,
-            output_dir=str(base / name),
-        )
-        results[name] = metrics
+    if run_ablation:
+        for group_name, methods in ABLATION_METHOD_GROUPS.items():
+            group_dir = out / group_name
+            results[group_name] = run_methods(methods=methods, num_episodes=num_episodes, output_dir=str(group_dir))
 
     return results

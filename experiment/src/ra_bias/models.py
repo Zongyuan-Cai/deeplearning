@@ -1,6 +1,6 @@
 ﻿from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 
@@ -9,6 +9,11 @@ class Task:
     task_id: str
     description: str
     candidate_pool: list[dict[str, Any]]
+    initial_state: dict[str, Any] = field(default_factory=dict)
+    candidate_generation_rule: str = "sample_from_pool"
+    success_rule: str = "outcome.success"
+    budget_max_rounds: int = 6
+    budget_max_tokens: int = 8_000
 
 
 @dataclass
@@ -22,79 +27,75 @@ class Candidate:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "id": self.candidate_id,
-            "description": self.description,
-            "tags": self.tags,
-            "base_score": self.base_score,
-            "bias_score": self.bias_score,
-            "final_score": self.final_score,
-            "metadata": self.metadata,
-        }
+        return asdict(self)
 
 
 @dataclass
 class Outcome:
     success: bool
     quality_score: float
+    score: float
     failure_modes: list[str]
     cost_tokens: int
+    cost_steps: int = 1
     notes: str = ""
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "score": self.quality_score,
-            "failure_modes": self.failure_modes,
-            "cost_tokens": self.cost_tokens,
-            "notes": self.notes,
-        }
+        return asdict(self)
 
 
 @dataclass
 class ReflectionSignal:
     prefer_tags: list[str] = field(default_factory=list)
     avoid_tags: list[str] = field(default_factory=list)
+    failure_modes: list[str] = field(default_factory=list)
     confidence: float = 0.0
     notes: str = ""
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "prefer_tags": self.prefer_tags,
-            "avoid_tags": self.avoid_tags,
-            "confidence": self.confidence,
-            "notes": self.notes,
-        }
+        return asdict(self)
 
 
 @dataclass
 class RoundState:
     task_id: str
     round_idx: int
-    budget_left: int
+    budget_tokens_left: int
+    budget_steps_left: int
     history: list[dict[str, Any]]
+    exposed_failure_modes: list[str]
+
+
+@dataclass
+class BudgetUsage:
+    tokens_used: int
+    tokens_left: int
+    steps_used: int
+    steps_left: int
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
 
 @dataclass
 class RoundLog:
     task_id: str
     round_idx: int
-    candidates: list[dict[str, Any]]
-    selected_candidate_id: str
-    selected_description: str
+    method_name: str
+    candidate_set: list[dict[str, Any]]
+    ranking_before: list[str]
+    ranking_after: list[str]
+    selected_candidate: dict[str, Any]
     outcome: dict[str, Any]
+    score: float
+    best_score: float
     reflection_signal: dict[str, Any]
+    bias_before: dict[str, Any]
+    bias_after: dict[str, Any]
+    budget_usage: dict[str, Any]
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "task_id": self.task_id,
-            "round": self.round_idx,
-            "candidate_set": self.candidates,
-            "selected_id": self.selected_candidate_id,
-            "selected_description": self.selected_description,
-            "outcome": self.outcome,
-            "reflection_signal": self.reflection_signal,
-        }
+        return asdict(self)
 
 
 @dataclass
@@ -105,6 +106,7 @@ class EpisodeLog:
     success: bool
     steps: int
     total_tokens: int
+    terminated_by: str
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -114,4 +116,5 @@ class EpisodeLog:
             "success": self.success,
             "steps": self.steps,
             "total_tokens": self.total_tokens,
+            "terminated_by": self.terminated_by,
         }

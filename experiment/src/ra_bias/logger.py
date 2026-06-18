@@ -31,6 +31,7 @@ class JsonlLogger:
                     "success": ep.success,
                     "steps": ep.steps,
                     "total_tokens": ep.total_tokens,
+                    "terminated_by": ep.terminated_by,
                 }
             )
 
