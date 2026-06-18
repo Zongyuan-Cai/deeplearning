@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Office Agent Demo</title>
+  <link rel="stylesheet" href="/ui/style.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>Office Agent</h1>
+    <p class="subtitle">输入提示词、上传文件，查看执行结果并确认输出。</p>
+
+    <form id="run-form" class="card">
+      <label for="prompt">Prompt</label>
+      <textarea id="prompt" name="prompt" rows="4" placeholder="例如：在文档最后加上东南大学的简介" required></textarea>
+
+      <label for="files">上传文件</label>
+      <input id="files" name="files" type="file" multiple />
+
+      <div class="row">
+        <div>
+          <label for="taskType">Task Type</label>
+          <select id="taskType" name="task_type">
+            <option value="auto" selected>auto</option>
+            <option value="summarize">summarize</option>
+            <option value="fill">fill</option>
+            <option value="extract">extract</option>
+            <option value="compare">compare</option>
+            <option value="validate">validate</option>
+          </select>
+        </div>
+        <div>
+          <label for="outputMode">Output Mode</label>
+          <select id="outputMode" name="output_mode">
+            <option value="full" selected>full</option>
+            <option value="summary">summary</option>
+            <option value="minimal">minimal</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="submitBtn" type="submit">运行</button>
+        <span id="status" class="status">就绪</span>
+      </div>
+    </form>
+
+    <section class="card">
+      <h2>结果文本</h2>
+      <pre id="resultText" class="output">尚无结果</pre>
+    </section>
+
+    <section class="card">
+      <h2>输出文件</h2>
+      <ul id="resultFiles" class="files"></ul>
+    </section>
+
+    <section class="card">
+      <h2>校验信息</h2>
+      <pre id="checks" class="output">尚无结果</pre>
+    </section>
+
+    <section class="card">
+      <h2>原始响应</h2>
+      <pre id="rawJson" class="output">尚无结果</pre>
+    </section>
+  </main>
+
+  <script src="/ui/app.js"></script>
+</body>
+</html>

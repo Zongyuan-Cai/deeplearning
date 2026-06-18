@@ -1,0 +1,139 @@
+{
+  "single_file_recheck": {
+    "ppt_read": {
+      "success": true,
+      "message": "PPT document read successfully",
+      "error_code": null,
+      "capability": "read",
+      "provider": null,
+      "document_type": "ppt",
+      "output_path": null,
+      "output_exists": false,
+      "service_meta": {
+        "capability": "read",
+        "mode": "single",
+        "document_type": "ppt",
+        "file_paths": [
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_ppt_1.pptx"
+        ]
+      }
+    },
+    "ppt_write": {
+      "success": true,
+      "message": "PPT document written successfully",
+      "error_code": null,
+      "capability": "write",
+      "provider": null,
+      "document_type": "ppt",
+      "output_path": "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_ppt_1_written.pptx",
+      "output_exists": true,
+      "service_meta": {
+        "capability": "write",
+        "mode": "single",
+        "document_type": "ppt",
+        "file_paths": [
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_ppt_1.pptx"
+        ]
+      }
+    }
+  },
+  "multi_file": {
+    "summarize_word_excel": {
+      "success": true,
+      "message": "Document summary generated",
+      "error_code": null,
+      "capability": null,
+      "provider": null,
+      "document_type": null,
+      "output_path": null,
+      "output_exists": false,
+      "service_meta": {
+        "capability": "summarize",
+        "mode": "multi",
+        "document_type": "mixed",
+        "file_paths": [
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_word_1.docx",
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_excel_1.xlsx"
+        ]
+      }
+    },
+    "summarize_word_excel_pdf_ppt": {
+      "success": true,
+      "message": "Document summary generated",
+      "error_code": null,
+      "capability": null,
+      "provider": null,
+      "document_type": null,
+      "output_path": null,
+      "output_exists": false,
+      "service_meta": {
+        "capability": "summarize",
+        "mode": "multi",
+        "document_type": "mixed",
+        "file_paths": [
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_word_1.docx",
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_excel_1.xlsx",
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_pdf_1.pdf",
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_ppt_1.pptx"
+        ]
+      }
+    },
+    "compare_word_word": {
+      "success": true,
+      "message": "Word documents compared successfully",
+      "error_code": null,
+      "capability": "compare",
+      "provider": "WordProvider",
+      "document_type": "word",
+      "output_path": null,
+      "output_exists": false,
+      "service_meta": {
+        "capability": "compare",
+        "mode": "multi",
+        "document_type": "word",
+        "file_paths": [
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_word_1.docx",
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_word_2.docx"
+        ]
+      }
+    },
+    "compare_excel_excel": {
+      "success": true,
+      "message": "Excel documents compared successfully",
+      "error_code": null,
+      "capability": "compare",
+      "provider": "ExcelProvider",
+      "document_type": "excel",
+      "output_path": null,
+      "output_exists": false,
+      "service_meta": {
+        "capability": "compare",
+        "mode": "multi",
+        "document_type": "excel",
+        "file_paths": [
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_excel_1.xlsx",
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_excel_2.xlsx"
+        ]
+      }
+    },
+    "compare_cross_word_excel": {
+      "success": false,
+      "message": "compare requires the same document type for all inputs",
+      "error_code": "DOCUMENT_SERVICE_ERROR",
+      "capability": "compare",
+      "provider": null,
+      "document_type": "mixed",
+      "output_path": null,
+      "output_exists": false,
+      "service_meta": {
+        "capability": "compare",
+        "mode": "multi",
+        "document_type": "mixed",
+        "file_paths": [
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_word_1.docx",
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_excel_1.xlsx"
+        ]
+      }
+    }
+  }
+}

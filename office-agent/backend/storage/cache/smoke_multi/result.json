@@ -1,0 +1,278 @@
+{
+  "registry_by_document_type": {
+    "word": [
+      "read",
+      "extract",
+      "locate",
+      "fill",
+      "compare",
+      "validate",
+      "write",
+      "scan_template"
+    ],
+    "excel": [
+      "read",
+      "extract",
+      "locate",
+      "fill",
+      "update_table",
+      "compare",
+      "validate",
+      "write"
+    ],
+    "pdf": [
+      "read",
+      "extract",
+      "locate",
+      "fill",
+      "validate",
+      "write",
+      "scan_template"
+    ],
+    "ppt": [
+      "read",
+      "extract",
+      "locate",
+      "fill",
+      "validate",
+      "write",
+      "scan_template"
+    ],
+    "text": [
+      "read",
+      "extract",
+      "locate",
+      "fill",
+      "compare",
+      "validate",
+      "write",
+      "scan_template"
+    ]
+  },
+  "single_file": {
+    "word_read": {
+      "success": true,
+      "message": "Word document read successfully",
+      "error_code": null,
+      "capability": "read",
+      "provider": "WordProvider",
+      "document_type": "word",
+      "output_path": null,
+      "output_exists": false,
+      "service_meta": {
+        "capability": "read",
+        "mode": "single",
+        "document_type": "word",
+        "file_paths": [
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_word_1.docx"
+        ]
+      }
+    },
+    "word_write": {
+      "success": true,
+      "message": "Word document written successfully",
+      "error_code": null,
+      "capability": "write",
+      "provider": "WordProvider",
+      "document_type": "word",
+      "output_path": "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_word_1_written.docx",
+      "output_exists": true,
+      "service_meta": {
+        "capability": "write",
+        "mode": "single",
+        "document_type": "word",
+        "file_paths": [
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_word_1.docx"
+        ]
+      }
+    },
+    "excel_read": {
+      "success": true,
+      "message": "Excel document read successfully",
+      "error_code": null,
+      "capability": "read",
+      "provider": "ExcelProvider",
+      "document_type": "excel",
+      "output_path": null,
+      "output_exists": false,
+      "service_meta": {
+        "capability": "read",
+        "mode": "single",
+        "document_type": "excel",
+        "file_paths": [
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_excel_1.xlsx"
+        ]
+      }
+    },
+    "excel_write": {
+      "success": true,
+      "message": "Excel cells written successfully",
+      "error_code": null,
+      "capability": "write",
+      "provider": "ExcelProvider",
+      "document_type": "excel",
+      "output_path": "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_excel_1_filled.xlsx",
+      "output_exists": true,
+      "service_meta": {
+        "capability": "write",
+        "mode": "single",
+        "document_type": "excel",
+        "file_paths": [
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_excel_1.xlsx"
+        ]
+      }
+    },
+    "pdf_read": {
+      "success": true,
+      "message": "PDF document read successfully",
+      "error_code": null,
+      "capability": "read",
+      "provider": null,
+      "document_type": "pdf",
+      "output_path": null,
+      "output_exists": false,
+      "service_meta": {
+        "capability": "read",
+        "mode": "single",
+        "document_type": "pdf",
+        "file_paths": [
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_pdf_1.pdf"
+        ]
+      }
+    },
+    "pdf_write": {
+      "success": true,
+      "message": "PDF document written successfully",
+      "error_code": null,
+      "capability": "write",
+      "provider": null,
+      "document_type": "pdf",
+      "output_path": "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_pdf_1_written.pdf",
+      "output_exists": true,
+      "service_meta": {
+        "capability": "write",
+        "mode": "single",
+        "document_type": "pdf",
+        "file_paths": [
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_pdf_1.pdf"
+        ]
+      }
+    },
+    "ppt_read": {
+      "success": false,
+      "message": "Failed to read ppt document: 'list' object has no attribute 'rId'",
+      "error_code": null,
+      "capability": "read",
+      "provider": null,
+      "document_type": "ppt",
+      "output_path": null,
+      "output_exists": false,
+      "service_meta": {
+        "capability": "read",
+        "mode": "single",
+        "document_type": "ppt",
+        "file_paths": [
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_ppt_1.pptx"
+        ]
+      }
+    },
+    "ppt_write": {
+      "success": true,
+      "message": "PPT document written successfully",
+      "error_code": null,
+      "capability": "write",
+      "provider": null,
+      "document_type": "ppt",
+      "output_path": "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_ppt_1_written.pptx",
+      "output_exists": true,
+      "service_meta": {
+        "capability": "write",
+        "mode": "single",
+        "document_type": "ppt",
+        "file_paths": [
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_ppt_1.pptx"
+        ]
+      }
+    }
+  },
+  "multi_file": {
+    "summarize_mixed_word_excel_pdf_ppt": {
+      "success": false,
+      "message": "Failed to read ppt document: 'list' object has no attribute 'rId'",
+      "error_code": null,
+      "capability": "read",
+      "provider": null,
+      "document_type": "ppt",
+      "output_path": null,
+      "output_exists": false,
+      "service_meta": {
+        "capability": "summarize",
+        "mode": "multi",
+        "document_type": "mixed",
+        "file_paths": [
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_word_1.docx",
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_excel_1.xlsx",
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_pdf_1.pdf",
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_ppt_1.pptx"
+        ]
+      }
+    },
+    "compare_word_word": {
+      "success": true,
+      "message": "Word documents compared successfully",
+      "error_code": null,
+      "capability": "compare",
+      "provider": "WordProvider",
+      "document_type": "word",
+      "output_path": null,
+      "output_exists": false,
+      "service_meta": {
+        "capability": "compare",
+        "mode": "multi",
+        "document_type": "word",
+        "file_paths": [
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_word_1.docx",
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_word_2.docx"
+        ]
+      }
+    },
+    "compare_excel_excel": {
+      "success": true,
+      "message": "Excel documents compared successfully",
+      "error_code": null,
+      "capability": "compare",
+      "provider": "ExcelProvider",
+      "document_type": "excel",
+      "output_path": null,
+      "output_exists": false,
+      "service_meta": {
+        "capability": "compare",
+        "mode": "multi",
+        "document_type": "excel",
+        "file_paths": [
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_excel_1.xlsx",
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_excel_2.xlsx"
+        ]
+      }
+    },
+    "compare_cross_word_excel": {
+      "success": false,
+      "message": "compare requires the same document type for all inputs",
+      "error_code": "DOCUMENT_SERVICE_ERROR",
+      "capability": "compare",
+      "provider": null,
+      "document_type": "mixed",
+      "output_path": null,
+      "output_exists": false,
+      "service_meta": {
+        "capability": "compare",
+        "mode": "multi",
+        "document_type": "mixed",
+        "file_paths": [
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_word_1.docx",
+          "E:\\office-agent\\backend\\storage\\cache\\smoke_multi\\sample_excel_1.xlsx"
+        ]
+      }
+    }
+  }
+}
