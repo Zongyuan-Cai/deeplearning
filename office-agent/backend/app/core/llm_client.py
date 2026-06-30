@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import time
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
@@ -10,6 +11,17 @@ import requests
 
 from app.core.config import settings
 from app.core.logger import get_logger
+
+
+@dataclass
+class LLMResponse:
+    """LLM 响应结构，支持 tool calling。"""
+    content: str | None = None
+    tool_calls: list[dict] = field(default_factory=list)
+    usage: dict = field(default_factory=dict)
+    finish_reason: str = ""
+    duration_ms: int = 0
+    raw_response: dict = field(default_factory=dict)
 
 
 class LLMErrorType(str, Enum):
@@ -285,6 +297,150 @@ class LLMClient:
                 f"Failed to parse structured output: {e}",
                 details={"raw": raw},
             ) from e
+
+    def chat_with_tools(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+        temperature: float | None = None,
+        model: str | None = None,
+        max_tokens: int | None = None,
+        retries: int | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> LLMResponse:
+        """支持 tool calling 的对话方法。
+
+        Args:
+            messages: 标准 OpenAI messages 格式
+            tools: OpenAI function schema 列表
+            temperature: 温度参数
+            model: 模型名称
+            max_tokens: 最大 token 数
+            retries: 重试次数
+            metadata: 元数据
+
+        Returns:
+            LLMResponse 包含 content, tool_calls, usage 等
+        """
+        if not self.enabled:
+            raise LLMClientError(
+                "LLM is not configured",
+                error_type=LLMErrorType.CONFIG,
+                retryable=False,
+            )
+
+        url = f"{self.base_url}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        use_model = model or self.model
+        use_temperature = self.default_temperature if temperature is None else float(temperature)
+        use_max_tokens = self.default_max_tokens if max_tokens is None else int(max_tokens)
+
+        payload: dict[str, Any] = {
+            "model": use_model,
+            "temperature": use_temperature,
+            "messages": messages,
+        }
+
+        if use_max_tokens > 0:
+            payload["max_tokens"] = use_max_tokens
+
+        if tools:
+            payload["tools"] = tools
+            payload["tool_choice"] = "auto"
+
+        if self.thinking_type:
+            payload["thinking"] = {"type": self.thinking_type}
+
+        if self.reasoning_effort:
+            payload["reasoning_effort"] = self.reasoning_effort
+
+        attempt_limit = self.max_retries if retries is None else max(0, int(retries))
+        last_error: LLMClientError | None = None
+
+        for attempt in range(attempt_limit + 1):
+            start_time = time.time()
+            try:
+                self._log_request(
+                    system_prompt="[tool-calling mode]",
+                    user_prompt=f"{len(messages)} messages",
+                    payload=payload,
+                    metadata=metadata,
+                    attempt=attempt,
+                    attempt_limit=attempt_limit,
+                )
+                resp = requests.post(url, headers=headers, json=payload, timeout=self.timeout)
+                if resp.status_code >= 400:
+                    raise self._build_http_error(resp)
+
+                data = resp.json()
+                duration_ms = int((time.time() - start_time) * 1000)
+
+                try:
+                    choice = data["choices"][0]
+                    message = choice.get("message", {})
+                    content = message.get("content")
+                    tool_calls = message.get("tool_calls", [])
+                    finish_reason = choice.get("finish_reason", "")
+                    usage = data.get("usage", {})
+                except Exception as e:
+                    raise LLMClientError(
+                        f"Invalid LLM response format: {e}",
+                        error_type=LLMErrorType.BAD_RESPONSE,
+                        retryable=False,
+                        details={"response": data},
+                    ) from e
+
+                result = LLMResponse(
+                    content=content,
+                    tool_calls=tool_calls if tool_calls else [],
+                    usage=usage,
+                    finish_reason=finish_reason,
+                    duration_ms=duration_ms,
+                    raw_response=data,
+                )
+
+                self._log_response(
+                    content=f"content={content}, tool_calls={len(tool_calls)}",
+                    metadata=metadata,
+                    attempt=attempt,
+                )
+                return result
+
+            except requests.Timeout as e:
+                last_error = LLMClientError(
+                    f"LLM request timeout: {e}",
+                    error_type=LLMErrorType.TIMEOUT,
+                    retryable=True,
+                )
+            except requests.RequestException as e:
+                last_error = LLMClientError(
+                    f"LLM network error: {e}",
+                    error_type=LLMErrorType.NETWORK,
+                    retryable=True,
+                )
+            except LLMClientError as e:
+                last_error = e
+
+            if last_error is None:
+                continue
+
+            can_retry = attempt < attempt_limit and bool(last_error.retryable)
+            self._log_error(error=last_error, metadata=metadata, attempt=attempt, retrying=can_retry)
+            if not can_retry:
+                raise last_error
+
+            sleep_seconds = self._compute_backoff(attempt)
+            time.sleep(sleep_seconds)
+
+        raise LLMClientError(
+            "LLM request failed without detailed error",
+            error_type=LLMErrorType.UNKNOWN,
+            retryable=False,
+        )
 
     # ---------- high-level helpers (for legacy/server usage) ----------
     def summarize_text(self, text: str, instruction: str = "") -> str:

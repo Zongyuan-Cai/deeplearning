@@ -1,9 +1,14 @@
+"""API Schemas — 请求/响应模型。"""
+
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
+
+# ===== 旧的兼容模型 =====
 
 class AgentFileItem(BaseModel):
     file_id: str | None = None
@@ -51,6 +56,65 @@ class AgentRunResponse(BaseModel):
     structured_data: dict[str, Any] = Field(default_factory=dict)
     execution_trace: list[dict[str, Any]] = Field(default_factory=list)
 
+    # 新增字段
+    session_id: str = ""
+    messages: list[dict[str, Any]] = Field(default_factory=list)
+    debug_log: list[dict[str, Any]] = Field(default_factory=list)
+
     # 兼容旧字段
     answer: str = ""
     result: dict[str, Any] = Field(default_factory=dict)
+
+
+# ===== 新的 Session 模型 =====
+
+class ChatMessage(BaseModel):
+    """标准 OpenAI messages 格式。"""
+    role: str  # system / user / assistant / tool
+    content: str | None = None
+    tool_calls: list[dict[str, Any]] | None = None
+    tool_call_id: str | None = None
+
+
+class SessionCreateRequest(BaseModel):
+    """创建会话请求。"""
+    system_prompt: str | None = None
+
+
+class SessionCreateResponse(BaseModel):
+    """创建会话响应。"""
+    session_id: str
+    created_at: str
+
+
+class SessionInfo(BaseModel):
+    """会话信息。"""
+    session_id: str
+    created_at: str
+    last_active: str
+    message_count: int
+    file_count: int
+
+
+class MessageRequest(BaseModel):
+    """发送消息请求。"""
+    message: str
+    files: list[dict[str, Any]] | None = None
+
+
+class MessageResponse(BaseModel):
+    """发送消息响应。"""
+    success: bool
+    message: str
+    session_id: str
+    messages: list[dict[str, Any]] = Field(default_factory=list)
+    debug_log: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class FileUploadResponse(BaseModel):
+    """文件上传响应。"""
+    success: bool
+    file_id: str
+    filename: str
+    path: str
+    size: int

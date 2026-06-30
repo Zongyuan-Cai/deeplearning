@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import router as api_router
+from app.api.routes import router as api_router, cleanup_expired_sessions
 
 
 app = FastAPI(title="Office Agent")
@@ -21,6 +22,12 @@ if _STORAGE_DIR.exists():
 
 if _FRONTEND_DIR.exists():
     app.mount("/ui", StaticFiles(directory=str(_FRONTEND_DIR)), name="ui")
+
+
+@app.on_event("startup")
+async def startup_event():
+    """启动时执行的初始化任务。"""
+    asyncio.create_task(cleanup_expired_sessions())
 
 
 @app.get("/")
